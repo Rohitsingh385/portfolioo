@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rohit</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/split-type"></script>
+    
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --text-color: #e0e0e0;
+            --accent-color: #8c52ff;
+            --font-main: 'Helvetica Neue', Arial, sans-serif;
+            --font-code: 'Courier New', Courier, monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            overflow-x: hidden;
+            cursor: default; 
+        }
+
+      
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); z-index: 999999;
+            display: flex; justify-content: space-between; align-items: flex-end;
+            padding: 2rem; font-size: 1.5rem; font-weight: bold;
+            cursor: wait; 
+        }
+        .loader-progress { color: var(--accent-color); }
+
+        
+        nav {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1.5fr;
+            gap: 1rem;
+            padding: 1rem 2rem;
+            opacity: 0;
+            transform: translateY(-20px);
+            border-bottom: 1px solid #333;
+            position: fixed;
+            top: 0; width: 100%;
+            background: rgba(10,10,10,0.95);
+            backdrop-filter: blur(10px);
+            z-index: 50;
+            align-items: flex-start;
+        }
+        
+        .nav-col { display: flex; flex-direction: column; gap: 0.2rem; }
+        
+      
+        .profile-img { 
+            width: 40px; height: 40px; background: #333; border-radius: 5px; object-fit: cover; 
+            cursor: alias; 
+        }
+        .nav-header { font-size: 0.7rem; color: #666; margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 1px; }
+        
+       
+        .social-link { 
+            color: #fff; text-decoration: none; transition: 0.3s; 
+            cursor: help; 
+        }
+        .social-link:hover { color: var(--accent-color); }
+
+       
+        .github-box { 
+            background: #111; padding: 10px; border: 1px solid #333; 
+            font-family: var(--font-code); font-size: 0.75rem; 
+            height: 110px; overflow: hidden; position: relative; 
+            cursor: pointer; 
+        }
+        .github-list { display: flex; flex-direction: column; gap: 6px; animation: autoScroll 25s linear infinite; }
+        .github-box:hover .github-list { animation-play-state: paused; }
+        .github-item { display: flex; align-items: center; gap: 8px; white-space: nowrap; color: #888; transition: 0.2s; }
+        .github-item:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        .cmd-icon { color: var(--accent-color); font-weight: bold; }
+        @keyframes autoScroll { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+
+      
+        .hero-section {
+            height: 100vh; width: 100%;
+            display: flex; align-items: center; justify-content: center;
+            padding: 0 2rem;
+        }
+        .hero-grid {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3rem; 
+            max-width: 1400px; width: 100%; margin-top: 120px; 
+        }
+        
+        .hero-col { opacity: 0.1; transform: translateY(30px); }
+        
+      
+        .hero-title { 
+            font-size: 2.2rem; line-height: 1.2; margin-bottom: 1rem; 
+            cursor: text; 
+        }
+        
+        .hero-desc { font-size: 1rem; color: #888; line-height: 1.6; cursor: text; }
+        .highlight { color: var(--accent-color); }
+        .hero-col.first { opacity: 1; transform: translateY(0); }
+
+      
+        .details-section {
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            border-top: 1px solid #222;
+        }
+        .section-title { font-size: 0.8rem; color: var(--accent-color); text-transform: uppercase; margin-bottom: 2rem; letter-spacing: 2px; }
+        
+        .resume-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 4rem; margin-bottom: 4rem; }
+        .resume-date { color: #666; font-family: var(--font-code); font-size: 0.9rem; }
+        .resume-content h3 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .resume-content h4 { font-size: 1rem; color: #888; margin-bottom: 1rem; font-weight: normal; }
+        .resume-content ul { list-style: none; color: #bbb; line-height: 1.6; }
+        .resume-content li { margin-bottom: 0.5rem; padding-left: 15px; position: relative; }
+        .resume-content li::before { content: "›"; color: var(--accent-color); position: absolute; left: 0; }
+
+        .skills-container { display: flex; flex-wrap: wrap; gap: 10px; }
+        
+      
+        .skill-tag { 
+            padding: 8px 16px; border: 1px solid #333; border-radius: 20px; 
+            font-size: 0.9rem; color: #ccc; 
+            cursor: cell; 
+        }
+        .skill-tag:hover { border-color: var(--accent-color); color: #fff; background: rgba(140, 82, 255, 0.1); }
+
+        .quote-box { 
+            text-align: center; padding: 4rem 0; 
+            font-size: 1.5rem; font-style: italic; color: #666;
+            border-top: 1px solid #222; border-bottom: 1px solid #222;
+            margin: 4rem 0;
+            cursor: text;
+        }
+
+    
+        .marquee-section { position: relative; padding: 4rem 0; border-top: 1px solid #333; background: var(--bg-color); z-index: 20; }
+        .marquee-container { display: flex; white-space: nowrap; overflow: hidden; }
+        .marquee-content { display: flex; animation: scroll 20s linear infinite; }
+        
+      
+        .marquee-item { 
+            font-size: 4rem; font-weight: bold; padding: 0 4rem; color: #444; 
+            transition: color 0.3s; 
+            cursor: pointer; 
+        }
+        .marquee-item:hover { 
+            color: #fff; 
+            cursor: not-allowed; 
+        }
+        .marquee-section:hover .marquee-content { animation-play-state: paused; }
+        @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+       
+        #video-popup { position: fixed; top: 0; left: 0; width: 400px; height: 250px; background: #000; z-index: 99999; pointer-events: none; transition: transform 0.1s ease; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.8); border: 1px solid #333; transform: scale(0); }
+        #video-popup video { width: 100%; height: 100%; object-fit: cover; }
+        .blur-active .hero-section, .blur-active nav, .blur-active .details-section { filter: blur(5px); transition: filter 0.3s ease; }
+
+        /* =========================================
+           MOBILE RESPONSIVE CSS
+           ========================================= */
+        @media (max-width: 768px) {
+            nav {
+                position: relative;
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 1rem;
+                text-align: center;
+                border-bottom: 1px solid #222;
+            }
+            .nav-col { align-items: center; justify-content: center; }
+            .nav-col:last-child { display: none; } 
+            
+            .hero-section {
+                height: auto; 
+                padding: 3rem 1.5rem;
+                display: block; 
+            }
+
+            .hero-grid {
+                grid-template-columns: 1fr; 
+                margin-top: 80px; 
+                gap: 4rem;
+            }
+
+            .hero-col {
+                opacity: 1 !important;
+                transform: none !important;
+            }
+            
+            .hero-title { font-size: 2rem; }
+
+            .resume-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            .resume-date { margin-bottom: 0.5rem; }
+
+            .marquee-item { font-size: 2.5rem; padding: 0 2rem; }
+            .quote-box { font-size: 1.2rem; }
+            
+            #video-popup { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div>Almost there...</div>
+        <div class="loader-progress">0%</div>
+    </div>
+
+    <nav>
+        <div class="nav-col">
+            <div style="display:flex; gap:10px; align-items:center;">
+                <img src="https://via.placeholder.com/40" class="profile-img" alt="Rohit">
+                <div>
+                    <h3 style="font-size:1rem;">Rohit</h3>
+                    <p style="font-size:0.7rem; color:#888;">Software Developer</p>
+                    <p style="font-size:0.9rem; color:#888;">RNC • JH • INDIA</p>
+                </div>
+            </div>
+            
+        </div>
+
+        <div class="nav-col">
+            <div class="nav-header">Socials</div>
+            <div style="display:flex; gap:15px; font-size:0.8rem;">
+                <a href="https://www.linkedin.com/in/rohiteeee/" target="_blank" class="social-link">LinkedIn ↗</a>
+                <a href="https://x.com/rohiteeee" target="_blank" class="social-link">X (Twitter) ↗</a>
+                <a href="https://github.com/Rohitsingh385" target="_blank" class="social-link">GitHub ↗</a>
+            </div>
+        </div>
+
+        <div class="nav-col">
+            <div class="nav-header">Latest Commit</div>
+            <div class="github-box" id="github-feed">Initializing Terminal...</div>
+        </div>
+    </nav>
+
+    <section class="hero-section" id="pinned-hero">
+        <div class="hero-grid">
+            <div class="hero-col first" id="col-1">
+                <div class="hero-title animate-text">
+                    Hello! I am <span class="highlight">Rohit</span>.
+                </div>
+                <p class="hero-desc">
+                    IT graduate & Software Developer. I solve real problems for real users, making sure the end result makes someone’s day easier.
+                </p>
+            </div>
+            <div class="hero-col" id="col-2">
+                <div class="hero-title animate-text">
+                    Building <span class="highlight">School ERPs</span>.
+                </div>
+                <p class="hero-desc">
+                    Currently at MICA Educational Company. Focused on dynamic admin panels, secure payments, and real-time transaction modules.
+                </p>
+            </div>
+            <div class="hero-col" id="col-3">
+                <div class="hero-title animate-text">
+                    Code & <span class="highlight">DevOps</span>.
+                </div>
+                <p class="hero-desc">
+                    <strong>Backend:</strong> PHP (CodeIgniter), Node.js<br>
+                    <strong>DevOps:</strong> Docker, AWS EC2, Jenkins<br>
+                    <strong>Database:</strong> MySQL, MongoDB
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section class="details-section" id="details">
+ 
+
+        <div class="section-title">Experience</div>
+        <div class="resume-grid">
+            <div class="resume-date">Sep 2024 — Present</div>
+            <div class="resume-content">
+                <h3>Software Developer</h3>
+                <h4>MICA Educational Company Pvt. Ltd.</h4>
+                <ul>
+                    <li>Implementing new features and modules in the School ERP software using CodeIgniter 3.</li>
+                    <li>Providing ongoing technical support and maintenance for the ERP system.</li>
+                    <li>Creating dynamic, responsive websites for schools tailored to client needs.</li>
+                    <li>Integrating secure payment gateways and implementing webhooks for real-time transactions.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="resume-grid">
+            <div class="resume-date">2023 — Present</div>
+            <div class="resume-content">
+                <h3>Freelance / Personal Projects</h3>
+                <ul>
+                    <li>Built a dynamic School ERP system using MERN Stack (MongoDB, Express, React, Node).</li>
+                    <li>Created a responsive Movie Ticket Booking platform with real-time seat selection.</li>
+                    <li>Automated a CI/CD pipeline for Node.js deployment using GitHub Actions.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section-title">Technical Skills</div>
+        <div class="skills-container">
+            <div class="skill-tag">PHP / CodeIgniter</div>
+            <div class="skill-tag">Node.js / Express</div>
+            <div class="skill-tag">React.js</div>
+            <div class="skill-tag">MySQL / MongoDB</div>
+            <div class="skill-tag">Docker</div>
+            <div class="skill-tag">AWS EC2</div>
+            <div class="skill-tag">Jenkins</div>
+            <div class="skill-tag">Git / GitHub</div>
+            <div class="skill-tag">RESTful APIs</div>
+        </div>
+
+    </section>
+
+    <section class="marquee-section" id="marquee">
+        <div class="marquee-container">
+            <div class="marquee-content">
+                <div class="marquee-item" data-video="./videos/">SCHOOL-ERP</div>
+                <div class="marquee-item" data-video="./videos/">MOVIE BOOKING</div>
+                <div class="marquee-item" data-video="./videos/">AWS-DOCKER</div>
+                <div class="marquee-item" data-video="./videos/">SHORT URL</div>
+                <div class="marquee-item" data-video="./videos/">SUDOKU</div>
+            </div>
+        </div>
+    </section>
+
+    <div id="video-popup">
+        <video src="" autoplay muted loop></video>
+    </div>
+
+    <script>
+        gsap.registerPlugin(ScrollTrigger);
+
+        
+        let progress = 0;
+        const loaderText = document.querySelector('.loader-progress');
+        const loader = document.getElementById('loader');
+        const nav = document.querySelector('nav');
+
+        const interval = setInterval(() => {
+            progress += Math.floor(Math.random() * 10) + 5;
+            if (progress > 100) progress = 100;
+            loaderText.innerText = progress + "%";
+            
+            if (progress === 100) {
+                clearInterval(interval);
+                gsap.to(loader, {
+                    yPercent: -100, duration: 1, ease: "power4.inOut",
+                    onComplete: () => {
+                        gsap.to(nav, { opacity: 1, y: 0, duration: 0.5 });
+                        initSplitText();
+                    }
+                });
+            }
+        }, 60);
+
+        function initSplitText() {
+            const typeSplit = new SplitType('.animate-text', { types: 'lines, words' });
+            gsap.from('#col-1 .word', { y: 20, opacity: 0, duration: 0.8, stagger: 0.05, ease: 'power2.out' });
+        }
+
+      
+        let mm = gsap.matchMedia();
+
+        mm.add("(min-width: 800px)", () => {
+            let tl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: "#pinned-hero",
+                    start: "top top",
+                    end: "+=2000",
+                    pin: true,
+                    scrub: 1,
+                    anticipatePin: 1
+                }
+            });
+
+            tl.to("#col-2", { opacity: 1, y: 0, duration: 1 })
+              .from("#col-2 .word", { y: 20, opacity: 0, stagger: 0.05, duration: 1 }, "<")
+              .to("#col-3", { opacity: 1, y: 0, duration: 1 })
+              .from("#col-3 .word", { y: 20, opacity: 0, stagger: 0.05, duration: 1 }, "<");
+        });
+
+     
+        fetch('https://api.github.com/users/Rohitsingh385/events/public')
+            .then(res => res.json())
+            .then(data => {
+                const feedContainer = document.getElementById('github-feed');
+                if(data.length > 0) {
+                    const recentEvents = data.slice(0, 10);
+                    let listHTML = '<div class="github-list">';
+                    
+                    const createItem = (event) => {
+                        const type = event.type.replace('Event', '');
+                        const repo = event.repo.name.split('/')[1] || event.repo.name; 
+                        const date = new Date(event.created_at).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+                        
+                        return `
+                            <div class="github-item" onclick="window.open('https://github.com/${event.repo.name}', '_blank')">
+                                <span class="cmd-icon">></span>
+                                <span style="color:#fff;">${type}:</span>
+                                <span>${repo}</span>
+                                <span style="opacity:0.5; font-size:0.6rem; margin-left:auto;">${date}</span>
+                            </div>
+                        `;
+                    };
+
+                    recentEvents.forEach(event => { listHTML += createItem(event); });
+                    recentEvents.forEach(event => { listHTML += createItem(event); });
+
+                    listHTML += '</div>';
+                    feedContainer.innerHTML = listHTML;
+                } else {
+                    feedContainer.innerHTML = "<div style='padding:10px'>No public activity found.</div>";
+                }
+            })
+            .catch(err => {
+               document.getElementById('github-feed').innerHTML = "Terminal Offline.";
+            });
+
+       
+        const marqueeItems = document.querySelectorAll('.marquee-item');
+        const popup = document.getElementById('video-popup');
+        const popupVideo = popup.querySelector('video');
+        
+        marqueeItems.forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                const videoUrl = item.getAttribute('data-video');
+                if(videoUrl) popupVideo.src = videoUrl;
+                gsap.to(popup, { scale: 1, duration: 0.3 });
+                document.body.classList.add('blur-active');
+            });
+            item.addEventListener('mouseleave', () => {
+                gsap.to(popup, { scale: 0, duration: 0.3 });
+                document.body.classList.remove('blur-active');
+            });
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if(document.body.classList.contains('blur-active')) {
+                gsap.to(popup, { x: e.clientX - 200, y: e.clientY - 280, duration: 0.2, ease: "power2.out" });
+            }
+        });
+    </script>
+</body>
+</html>
