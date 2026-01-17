@@ -499,8 +499,8 @@
                     Hello! I am <span class="highlight">Rohit</span>.
                 </div>
                 <p class="hero-desc">
-                    IT graduate & Software Developer. I solve real problems for real users, making sure the end result
-                    makes someone’s day easier.
+                    Software Developer with over a year of experience. I build reliable backend systems and practical
+                    web tools that solve actual business problems.
                 </p>
             </div>
             <div class="hero-col" id="col-2">
@@ -508,8 +508,8 @@
                     Building <span class="highlight">School ERPs</span>.
                 </div>
                 <p class="hero-desc">
-                    Currently at MICA Educational Company. Focused on dynamic admin panels, secure payments, and
-                    real-time transaction modules.
+                    Currently in a EdTech Company. specialized in building School ERP's , dynamic Websites, handling
+                    database, and integrating Payment Gateways.
                 </p>
             </div>
             <div class="hero-col" id="col-3">
@@ -517,9 +517,9 @@
                     Code & <span class="highlight">DevOps</span>.
                 </div>
                 <p class="hero-desc">
-                    <strong>Backend:</strong> PHP (CodeIgniter), Node.js<br>
-                    <strong>DevOps:</strong> Docker, AWS EC2, Jenkins<br>
-                    <strong>Database:</strong> MySQL, MongoDB
+                    <strong>Core:</strong> PHP (CodeIgniter), MySQL, HTML/CSS<br>
+                    <strong>Expanding into:</strong> Node.js, Express, MongoDB<br>
+                    <strong>Tools:</strong> Git, GitHub, Postman, Docker, AWS EC2
                 </p>
             </div>
         </div>
@@ -594,7 +594,7 @@
         }
         window.scrollTo(0, 0);
         document.body.style.overflow = "hidden";
-        
+
         let progress = 0;
         const loaderText = document.querySelector('.loader-progress');
         const loader = document.getElementById('loader');
@@ -606,11 +606,11 @@
         });
 
         const interval = setInterval(() => {
-          
+
             if (pageLoaded) {
                 progress += 5;
             } else {
-              
+
                 if (progress < 90) {
                     progress += Math.floor(Math.random() * 5);
                 }
@@ -619,7 +619,7 @@
             if (progress > 100) progress = 100;
             loaderText.innerText = progress + "%";
 
-        
+
             if (progress === 100) {
                 clearInterval(interval);
                 gsap.to(loader, {
