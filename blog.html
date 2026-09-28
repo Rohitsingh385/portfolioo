@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Writing — Rohit Kumar</title>
+  <meta name="description" content="Notes on backend engineering, caching, distributed systems, and shipping production software — by Rohit Kumar">
+  <meta name="author" content="Rohit Kumar">
+  <link rel="canonical" href="https://rowhit.in/blog.html">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Writing — Rohit Kumar">
+  <meta property="og:description" content="Notes on backend engineering, caching, distributed systems, and shipping production software.">
+  <meta property="og:url" content="https://rohitsingh.dev/blog.html">
+  <meta name="twitter:card" content="summary">
+
+  <!-- Structured data: Blog -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "name": "Rohit Kumar — Writing",
+    "url": "https://dev.to/rohiteeeelol",
+    "author": {
+      "@type": "Person",
+      "name": "Rohit Kumar",
+      "url": "https://rowhit.in"
+    },
+    "blogPost": [
+      {
+        "@type": "BlogPosting",
+        "headline": "How I Built a Production ready Feed Cache with Redis",
+        "url": "https://rowhit.in/blog/redis-feed-cache.html",
+        "datePublished": "2025-09-28",
+        "dateModified": "2025-09-28",
+        "author": { "@type": "Person", "name": "Rohit kumar" }
+      }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f2ec; --surface: #edeae2; --text: #1c1b18; --muted: #6b6860;
+      --faint: #a09d97; --border: #dedad2; --accent: #c8612a; --accent-bg: #fdf1eb;
+    }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.6; }
+    a { color: inherit; text-decoration: none; }
+
+    .page { max-width: 720px; margin: 0 auto; padding: 0 28px; }
+
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 32px 0 0; margin-bottom: 72px; }
+    .nav-id { display: flex; align-items: center; gap: 10px; }
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .nav-name { font-size: 14px; font-weight: 500; }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a { font-size: 13px; color: var(--muted); transition: color 0.15s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); }
+
+    .page-head { margin-bottom: 56px; }
+    .page-label { font-size: 12px; color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 16px; }
+    .page-title { font-family: 'Instrument Serif', Georgia, serif; font-size: clamp(36px, 6vw, 52px); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 16px; }
+    .page-sub { font-size: 16px; color: var(--muted); line-height: 1.6; max-width: 540px; }
+
+    .post-list { display: flex; flex-direction: column; }
+    .post-item { display: block; padding: 26px 0; border-top: 1px solid var(--border); }
+    .post-item:last-child { border-bottom: 1px solid var(--border); }
+    .post-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    .post-title { font-size: 17px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); transition: color 0.15s; }
+    .post-item:hover .post-title { color: var(--accent); }
+    .post-date { font-size: 12px; color: var(--faint); white-space: nowrap; flex-shrink: 0; }
+    .post-excerpt { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; max-width: 560px; }
+    .post-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .post-tag { font-size: 11px; color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; }
+
+    footer { border-top: 1px solid var(--border); padding: 32px 0 56px; margin-top: 56px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .footer-left { font-size: 13px; color: var(--faint); }
+    .footer-right { display: flex; gap: 20px; }
+    .footer-right a { font-size: 13px; color: var(--muted); transition: color 0.15s; }
+    .footer-right a:hover { color: var(--text); }
+
+    @media (max-width: 580px) {
+      .page { padding: 0 20px; }
+      .nav { margin-bottom: 52px; }
+      .nav-links { gap: 14px; }
+      .post-row { flex-direction: column; gap: 4px; }
+      footer { flex-direction: column; align-items: flex-start; gap: 12px; }
+    }
+
+    .fade-in { opacity: 0; transform: translateY(16px); transition: opacity 0.5s ease, transform 0.5s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <nav class="nav">
+    <a href="index.html" class="nav-id">
+      <div class="nav-dot"></div>
+      <span class="nav-name">Rohit Kumar</span>
+    </a>
+    <div class="nav-links">
+      <a href="blog.html" class="active">Writing</a>
+      <a href="https://github.com/Rohitsingh385" target="_blank" rel="noopener">GitHub ↗</a>
+      <a href="https://www.linkedin.com/in/rohiteeee/" target="_blank" rel="noopener">LinkedIn ↗</a>
+      <a href="https://x.com/rohiteeee" target="_blank" rel="noopener">X ↗</a>
+    </div>
+  </nav>
+
+  <header class="page-head fade-in">
+    <p class="page-label">Writing</p>
+    <h1 class="page-title">
+      Things I'm trying<br>
+        <em style="font-style: italic; color: var(--accent);">to understand.</em>
+    </h1>
+    <p class="page-sub">
+      Notes on software, history, economics, and the things that make the world a little easier to make sense of.
+   </p>
+
+  </header>
+
+  <main class="post-list fade-in">
+
+    <a href="blog/redis-feed-cache.html" class="post-item">
+      <div class="post-row">
+        <span class="post-title">How I Built a Production-Ready Feed Cache with Redis Cache-Aside, Jitter, and Distributed Locks Explained</span>
+      </div>
+      <p class="post-excerpt">
+        The story of how I built the feed for my Threads clone, what went wrong
+        at each step, and how I ended up with a production grade caching strategy
+        using Redis covering cache-aside, TTL jitter, and distributed locks.
+      </p>
+      <div class="post-tags">
+        <span class="post-tag">redis</span>
+        <span class="post-tag">node</span>
+        <span class="post-tag">typescript</span>
+        <span class="post-tag">backend</span>
+        <span class="post-tag">database</span>
+        <span class="post-tag">performance</span>
+      </div>
+    </a>
+
+  </main>
+
+  <footer>
+    <span class="footer-left">Rohit Singh · Ranchi, India</span>
+    <div class="footer-right">
+      <a href="index.html">← Home</a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.fade-in').forEach((el) => observer.observe(el));
+</script>
+</body>
+</html>
