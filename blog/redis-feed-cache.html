@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How I Built a Production-Ready Feed Cache with Redis — Cache-Aside, Jitter, and Distributed Locks</title>
+  <meta name="description" content="A practical, from-scratch walkthrough of building a personalized feed cache with Redis in Node.js. Covers cache-aside, TTL jitter, and distributed locks — what each pattern solves and why it exists.">
+  <meta name="keywords" content="redis, node.js, typescript, backend, webdev, javascript, database, performance, cache-aside, ttl jitter, distributed lock, thundering herd, cache stampede">
+  <meta name="author" content="Rohit Kumar">
+  <link rel="canonical" href="https://rowhit.in/blog/redis-feed-cache.html">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="How I Built a Production-Ready Feed Cache with Redis">
+  <meta property="og:description" content="Cache-aside, TTL jitter, and distributed locks — what each pattern solves and why it exists.">
+  <meta property="og:url" content="https://rohitsingh.dev/blog/redis-feed-cache.html">
+  <meta property="og:site_name" content="Rohit Kumar">
+  <meta property="article:published_time" content="2025-09-28T10:00:00+05:30">
+  <meta property="article:author" content="Rohit Kumar">
+  <meta property="article:tag" content="redis">
+  <meta property="article:tag" content="node.js">
+  <meta property="article:tag" content="typescript">
+  <meta property="article:tag" content="backend">
+  <meta property="article:tag" content="database">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How I Built a Production-Ready Feed Cache with Redis">
+  <meta name="twitter:description" content="Cache-aside, TTL jitter, and distributed locks — what each pattern solves and why.">
+  <meta name="twitter:creator" content="@rohiteeee">
+
+  <!-- Breadcrumb structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rowhit.in/" },
+      { "@type": "ListItem", "position": 2, "name": "Writing", "item": "https://rowhit.in/blog.html" },
+      { "@type": "ListItem", "position": 3, "name": "Production-Ready Feed Cache with Redis" }
+    ]
+  }
+  </script>
+
+  <!-- Article structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "How I Built a Production-Ready Feed Cache with Redis — Cache-Aside, Jitter, and Distributed Locks Explained",
+    "description": "A practical, from-scratch walkthrough of building a personalized feed cache with Redis in Node.js. Covers cache-aside, TTL jitter, and distributed locks.",
+    "image": "https://rowhit.in/image/og-redis-feed-cache.png",
+    "datePublished": "2025-09-28T10:00:00+05:30",
+    "dateModified": "2025-09-28T10:00:00+05:30",
+    "author": {
+      "@type": "Person",
+      "name": "Rohit kumar",
+      "url": "https://rowhit.in",
+      "sameAs": [
+        "https://github.com/Rohitsingh385",
+        "https://www.linkedin.com/in/rohiteeee/",
+        "https://x.com/rohiteeee"
+      ]
+    },
+    "publisher": {
+      "@type": "Person",
+      "name": "Rohit Kumar",
+      "url": "https://rowhit.in"
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "https://rowhit.in/blog/redis-feed-cache.html"
+    },
+    "keywords": "redis, node.js, typescript, backend, webdev, javascript, database, performance, cache-aside, ttl jitter, distributed lock",
+    "wordCount": "1900"
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f2ec; --surface: #edeae2; --text: #1c1b18; --muted: #6b6860;
+      --faint: #a09d97; --border: #dedad2; --accent: #c8612a; --accent-bg: #fdf1eb;
+      --code-bg: #1c1b18;
+    }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.6; }
+    a { color: inherit; text-decoration: none; }
+
+    .page { max-width: 720px; margin: 0 auto; padding: 0 28px; }
+
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 32px 0 0; margin-bottom: 56px; }
+    .nav-id { display: flex; align-items: center; gap: 10px; }
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .nav-name { font-size: 14px; font-weight: 500; }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a { font-size: 13px; color: var(--muted); transition: color 0.15s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); }
+
+    .back-link { font-size: 13px; color: var(--faint); margin-bottom: 32px; display: inline-block; transition: color 0.15s; }
+    .back-link:hover { color: var(--text); }
+
+    article header { margin-bottom: 40px; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
+    .article-label { font-size: 12px; color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 18px; }
+    .article-title { font-family: 'Instrument Serif', Georgia, serif; font-size: clamp(30px, 5.5vw, 44px); line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 18px; }
+    .article-title em { font-style: italic; color: var(--accent); }
+    .article-meta { font-size: 13px; color: var(--faint); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .article-meta time { color: var(--muted); }
+    .meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--faint); display: inline-block; }
+
+    .article-body { font-size: 16px; line-height: 1.75; color: var(--text); }
+    .article-body p { margin-bottom: 22px; }
+    .article-body p.lead { font-size: 17px; color: var(--muted); }
+    .article-body h2 { font-size: 23px; font-weight: 500; letter-spacing: -0.015em; margin: 44px 0 16px; color: var(--text); scroll-margin-top: 20px; }
+    .article-body h3 { font-size: 16px; font-weight: 600; margin: 28px 0 10px; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em; }
+    .article-body ul, .article-body ol { margin: 0 0 22px; padding-left: 22px; }
+    .article-body li { font-size: 16px; line-height: 1.75; color: var(--muted); margin-bottom: 8px; }
+    .article-body li::marker { color: var(--faint); }
+    .article-body strong { color: var(--text); font-weight: 600; }
+    .article-body a { color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 1px; transition: border-color 0.15s; }
+    .article-body a:hover { border-color: var(--accent); }
+
+    .article-body code {
+      font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+      font-size: 0.86em;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+    .article-body pre {
+      font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+      background: var(--code-bg);
+      color: #e4e0d8;
+      border-radius: 8px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.65;
+      margin: 22px 0;
+      -webkit-overflow-scrolling: touch;
+    }
+    .article-body pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+    .article-body pre.diagram {
+      background: var(--surface);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      font-size: 12.5px;
+      line-height: 1.7;
+      white-space: pre;
+    }
+
+    .article-body blockquote {
+      border-left: 2px solid var(--accent);
+      padding-left: 18px;
+      margin: 24px 0;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .pattern-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; }
+    .pattern-table th, .pattern-table td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .pattern-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); font-weight: 500; }
+    .pattern-table td { color: var(--muted); }
+    .pattern-table td:first-child { color: var(--text); font-weight: 500; }
+
+    .tags-strip { margin-top: 48px; padding-top: 28px; border-top: 1px solid var(--border); }
+    .tags-label { font-size: 11px; color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag { font-size: 12px; color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px; transition: color 0.15s, border-color 0.15s; }
+    .tag:hover { color: var(--accent); border-color: var(--accent); }
+
+    .article-footer { margin-top: 48px; padding: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+    .article-footer p { font-size: 14px; color: var(--muted); margin: 0; }
+    .article-footer a { color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 1px; }
+    .article-footer a:hover { border-color: var(--accent); }
+
+    footer.site { border-top: 1px solid var(--border); padding: 32px 0 56px; margin-top: 56px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .footer-left { font-size: 13px; color: var(--faint); }
+    .footer-right { display: flex; gap: 20px; }
+    .footer-right a { font-size: 13px; color: var(--muted); transition: color 0.15s; }
+    .footer-right a:hover { color: var(--text); }
+
+    @media (max-width: 580px) {
+      .page { padding: 0 20px; }
+      .nav { margin-bottom: 40px; }
+      .nav-links { gap: 14px; }
+      .article-body { font-size: 15.5px; }
+      .article-body pre { font-size: 12px; padding: 14px 16px; }
+      .pattern-table { font-size: 13px; }
+      .pattern-table th, .pattern-table td { padding: 10px 8px; }
+      footer.site { flex-direction: column; align-items: flex-start; gap: 12px; }
+    }
+
+    .fade-in { opacity: 0; transform: translateY(16px); transition: opacity 0.5s ease, transform 0.5s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-id">
+      <div class="nav-dot"></div>
+      <span class="nav-name">Rohit Kumar</span>
+    </a>
+    <div class="nav-links">
+      <a href="../blog.html" class="active">Writing</a>
+      <a href="https://github.com/Rohitsingh385" target="_blank" rel="noopener">GitHub ↗</a>
+      <a href="https://www.linkedin.com/in/rohiteeee/" target="_blank" rel="noopener">LinkedIn ↗</a>
+      <a href="https://x.com/rohiteeee" target="_blank" rel="noopener">X ↗</a>
+    </div>
+  </nav>
+
+  <a href="../blog.html" class="back-link">← All posts</a>
+
+  <article class="fade-in">
+
+    <header>
+      <p class="article-label">Backend · Caching</p>
+      <h1 class="article-title">How I Built a Production ready Feed Cache with Redis <em> Cache-Aside, Jitter, and Distributed Locks</em> Explained</h1>
+      <div class="article-meta">
+        <span class="meta-dot"></span>
+        <span>9 min read</span>
+        <span class="meta-dot"></span>
+        <span>By Rohit Kumar</span>
+      </div>
+    </header>
+
+    <div class="article-body">
+
+      <p class="lead">
+        If you've ever built a social media feed, you already know the problem.
+        Every time a user opens the app, you need to figure out who they follow,
+        fetch all their posts, sort them, paginate them and do it fast.
+        Do that for thousands of users at once and your database starts crying.
+      </p>
+
+      <p>
+        This is the story of how I built the feed for my
+        <a href="https://threads-eight-ruddy.vercel.app" target="_blank" rel="noopener">Threads clone</a>,
+        what went wrong at each step, and how I ended up with a production grade
+        caching strategy using Redis covering cache-aside, TTL jitter, and
+        distributed locks.
+      </p>
+
+      <p>
+        By the end of this post you'll understand not just what these patterns
+        are, but <strong>why each one exists and what problem it was solving</strong>.
+      </p>
+
+      <p>Let's start from the beginning.</p>
+
+      <h2>The Feed Without Any Cache</h2>
+
+      <p>Here's the core of what a personalized feed does. When a user opens the app, the backend needs to:</p>
+
+      <ol>
+        <li>Find everyone that user follows</li>
+        <li>Fetch the latest threads from those people</li>
+        <li>Check which threads the user has already liked</li>
+        <li>Return it all paginated</li>
+      </ol>
+
+      <p>Here's what that looks like in code:</p>
+
+      <pre><code>export const getFeed = async (userId: string, limit: number, cursor?: string) =&gt; {
+
+    // Step 1: find everyone this user follows
+    const following = await prisma.follow.findMany({
+        where: { followerId: userId },
+        select: { followingId: true }
+    })
+
+    const authorIds = [userId, ...following.map(f =&gt; f.followingId)]
+
+    // Step 2: fetch their threads with cursor pagination
+    const threads = await prisma.thread.findMany({
+        where: { authorId: { in: authorIds } },
+        take: limit + 1,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+        orderBy: { createdAt: "desc" }
+    })
+
+    const hasNextPage = threads.length &gt; limit
+    const data = hasNextPage ? threads.slice(0, limit) : threads
+
+    // Step 3: check which ones the user liked
+    const likedThreads = await prisma.like.findMany({
+        where: { userId, threadId: { in: data.map(t =&gt; t.id) } },
+        select: { threadId: true }
+    })
+
+    const likedThreadIds = new Set(likedThreads.map(l =&gt; l.threadId))
+
+    return {
+        data: data.map(thread =&gt; ({ ...thread, isLiked: likedThreadIds.has(thread.id) })),
+        nextCursor: hasNextPage ? data[data.length - 1].id : null,
+        hasNextPage
+    }
+}</code></pre>
+
+      <p>
+        This works. But every single feed request hits Postgres with at least two
+        queries the follow graph lookup and the thread fetch. For one user
+        that's fine. For 500 concurrent users, that's 1000+ heavy queries per
+        second on your database.
+      </p>
+
+      <p>We need a cache.</p>
+
+      <h2>Pattern 1: Cache-Aside</h2>
+
+      <p><strong>Situation:</strong> Every feed request was hitting Postgres directly. Two expensive queries per request, every time, even if the same user refreshed the feed 10 times in a minute.</p>
+
+      <p><strong>Task:</strong> Reduce database load by storing feed results temporarily so repeated requests don't hit Postgres.</p>
+
+      <p><strong>Action:</strong> Implement the cache-aside pattern with Redis.</p>
+
+      <p>Cache-aside is the most common caching strategy. The idea is simple:</p>
+
+      <ol>
+        <li>Check Redis first</li>
+        <li>If the data is there (cache hit), return it immediately no DB query</li>
+        <li>If it's not there (cache miss), query the DB, store the result in Redis, then return it</li>
+      </ol>
+
+      <pre class="diagram">Request comes in
+    ↓
+Check Redis
+    ↓ hit              ↓ miss
+Return cached    →   Query Postgres
+    data         →   Store in Redis
+                 →   Return data</pre>
+
+      <p>Here's what that looks like in the feed:</p>
+
+      <pre><code>const cacheKey = `feed:user:${userId}:cursor:${cursor ?? "first"}:limit:${limit}`
+
+const cachedFeed = await getCache(cacheKey)
+
+if (cachedFeed) {
+    // cache hit — skip Postgres entirely
+    threadIds = cachedFeed.threadIds
+    nextCursor = cachedFeed.nextCursor
+    hasNextPage = cachedFeed.hasNextPage
+} else {
+    // cache miss — query Postgres and store result
+    const generatedFeed = await generateFeed()
+    await setCache(cacheKey, generatedFeed, 60) // 60 second TTL
+    threadIds = generatedFeed.threadIds
+}</code></pre>
+
+      <p>
+        One important design decision here: we only cache the thread IDs and
+        pagination metadata, not the full thread objects. Why? Because
+        <code>isLiked</code> and <code>likesCount</code> change constantly. If
+        we cached the full thread, a user could like a post and still see the
+        old like count for 60 seconds. By caching only IDs, we always fetch
+        fresh thread data from Postgres we just skip the expensive follow
+        graph query.
+      </p>
+
+      <p>
+        <strong>Result:</strong> On a cache hit, the follow graph query is
+        completely skipped. Only two lightweight Postgres queries remain fetch
+        threads by IDs, check likes. Database load drops dramatically for
+        active users.
+      </p>
+
+      <h2>The New Problem: Thundering Herd</h2>
+
+      <p>Cache-aside works great. Until the cache expires.</p>
+
+      <p>
+        When a cache key hits its TTL and expires, the next request sees a miss
+        and goes to Postgres. That's fine if it's one request. But what if 50
+        users all request their feed at the exact same moment the cache expires?
+      </p>
+
+      <p>
+        All 50 check Redis → all 50 see a miss → all 50 fire the expensive
+        Postgres queries simultaneously.
+      </p>
+
+      <p>
+        This is called the <strong>thundering herd problem</strong> a single
+        cache expiry causes a sudden spike of database load that can overwhelm
+        your DB.
+      </p>
+
+      <p>
+        And there's a related problem called a <strong>cache stampede</strong> —
+        if you cache thousands of users' feeds all with the same TTL (say,
+        exactly 60 seconds), and they were all cached around the same time,
+        they all expire at the same time. Suddenly you have thousands of cache
+        misses happening simultaneously.
+      </p>
+
+      <p>We need to solve both.</p>
+
+      <h2>Pattern 2: TTL Jitter</h2>
+
+      <p><strong>Situation:</strong> All feed cache keys were set with a flat 60 second TTL. Under load, many keys were being populated at the same time, meaning they'd all expire at the same time causing a mass stampede of DB queries.</p>
+
+      <p><strong>Task:</strong> Spread out cache expirations so they don't all happen at once.</p>
+
+      <p><strong>Action:</strong> Add random jitter to the TTL.</p>
+
+      <p>Instead of always setting TTL to exactly 60 seconds, randomize it within a range:</p>
+
+      <pre><code>const ttl = 60 + Math.floor(Math.random() * 30) // anywhere from 60 to 90 seconds
+await setCache(cacheKey, generatedFeed, ttl)</code></pre>
+
+      <p>That's it. One line change.</p>
+
+      <p>
+        Now instead of 1000 cache keys all expiring at T+60s, they expire spread
+        across T+60s to T+90s. The DB load from cache misses is distributed
+        over a 30 second window instead of hitting all at once.
+      </p>
+
+      <p>
+        <strong>Result:</strong> Cache expirations are staggered. No more
+        synchronized mass expiry. The database sees a steady trickle of cache
+        misses instead of a sudden spike.
+      </p>
+
+      <p>
+        But jitter only solves the "many keys expiring at once" problem. It
+        doesn't solve the case where multiple concurrent requests hit the same
+        single key at the moment it expires. For that, we need something
+        stronger.
+      </p>
+
+      <h2>Pattern 3: Distributed Lock (Solving the Thundering Herd Properly)</h2>
+
+      <p><strong>Situation:</strong> Even with jitter, when a single cache key expires, multiple concurrent requests for that same key all see a miss simultaneously and all race to query Postgres and repopulate the cache. Only one of them needs to do that work the rest are wasted.</p>
+
+      <p><strong>Task:</strong> Ensure only one request rebuilds the cache when a key expires. All other concurrent requests should wait for that one to finish and then read from the cache.</p>
+
+      <p><strong>Action:</strong> Use a Redis distributed lock.</p>
+
+      <p>The idea: when a cache miss happens, before querying Postgres, try to acquire a lock. Only one request can hold the lock at a time. The lock holder does the DB work. Everyone else waits and retries the cache.</p>
+
+      <p>Here's how the lock itself works in Redis:</p>
+
+      <pre><code>export async function acquireLock(key: string, ttlSeconds: number): Promise&lt;boolean&gt; {
+    const result = await redisClient.set(`lock:${key}`, "1", { 
+        NX: true,  // only set if key does NOT exist
+        EX: ttlSeconds  // auto-expire so it never gets stuck
+    })
+    return result === "OK"
+}
+
+export async function releaseLock(key: string): Promise&lt;void&gt; {
+    await redisClient.del(`lock:${key}`)
+}</code></pre>
+
+      <p>
+        The <code>NX</code> flag is the key part it makes the
+        <code>SET</code> atomic. Only one caller gets <code>"OK"</code> back.
+        Everyone else gets <code>null</code>. This is how Redis guarantees only
+        one lock holder even under concurrent requests.
+      </p>
+
+      <p>Now here's how it's used in the feed:</p>
+
+      <pre><code>const lockAcquired = await acquireLock(cacheKey, 5)
+
+if (!lockAcquired) {
+    // someone else is already rebuilding the cache wait for them
+    const maxRetries = 10
+    const retryDelay = 50 // ms
+    let retryCache = null
+
+    for (let attempt = 0; attempt &lt; maxRetries; attempt++) {
+        await new Promise(resolve =&gt; setTimeout(resolve, retryDelay))
+        retryCache = await getCache(cacheKey)
+        if (retryCache) break
+    }
+
+    if (retryCache) {
+        threadIds = retryCache.threadIds
+        nextCursor = retryCache.nextCursor
+        hasNextPage = retryCache.hasNextPage
+    } else {
+        throw new Error("Failed to populate feed cache")
+    }
+
+} else {
+    // we got the lock we do the DB work
+    try {
+        const generatedFeed = await generateFeed()
+        const ttl = 60 + Math.floor(Math.random() * 30)
+        await setCache(cacheKey, generatedFeed, ttl)
+        threadIds = generatedFeed.threadIds
+        nextCursor = generatedFeed.nextCursor
+        hasNextPage = generatedFeed.hasNextPage
+    } finally {
+        await releaseLock(cacheKey) // always release, even if generateFeed throws
+    }
+}</code></pre>
+
+      <p>Walk through what happens when 50 requests hit a cold cache simultaneously:</p>
+
+      <ol>
+        <li>All 50 see a cache miss</li>
+        <li>All 50 try to acquire the lock</li>
+        <li>Request 1 gets <code>"OK"</code> it's the lock holder</li>
+        <li>Requests 2–50 get <code>null</code> they enter the retry loop</li>
+        <li>Request 1 queries Postgres, populates the cache, releases the lock</li>
+        <li>Requests 2–50 are polling every 50ms one by one they see the cache is populated and return</li>
+      </ol>
+
+      <p>Instead of 50 Postgres queries, you get exactly 1.</p>
+
+      <p>
+        Notice the <code>finally</code> block around
+        <code>releaseLock</code>. This is important if
+        <code>generateFeed()</code> throws an error, the lock still gets
+        released. Without this, a crash would leave the lock in Redis for 5
+        seconds (the TTL), blocking all other requests during that window.
+      </p>
+
+      <p>
+        <strong>Result:</strong> Under concurrent load on a cold cache, only
+        one request hits Postgres. All others wait and read from cache once it's
+        populated. Database load is completely controlled.
+      </p>
+
+      <h2>The Full Picture</h2>
+
+      <p>Here's how all three patterns layer together:</p>
+
+      <pre class="diagram">Request comes in
+        ↓
+Check cache
+        ↓ hit → return cached data (fast path)
+        ↓ miss
+Try to acquire lock
+        ↓ got lock                    ↓ lock taken by someone else
+Query Postgres                        Wait 50ms, retry cache
+Set cache with jitter TTL (60–90s)    Got cache? → return it
+Release lock                          Still nothing after 10 retries? → throw
+Return data</pre>
+
+      <p>Each layer solves a specific problem:</p>
+
+      <table class="pattern-table">
+        <thead>
+          <tr>
+            <th>Pattern</th>
+            <th>Problem it solves</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Cache-aside</td>
+            <td>Repeated DB queries for the same data</td>
+          </tr>
+          <tr>
+            <td>TTL jitter</td>
+            <td>Mass cache expiry causing synchronized DB spikes</td>
+          </tr>
+          <tr>
+            <td>Distributed lock</td>
+            <td>Concurrent requests all rebuilding the same cache key</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Why Not Single Flight Instead of a Lock?</h2>
+
+      <p>
+        You might have heard of the single flight pattern it collapses
+        concurrent requests for the same resource into one, using an in-memory
+        promise map. It's simpler and has zero network overhead.
+      </p>
+
+      <p>
+        The reason a distributed lock is better here: single flight only works
+        within a single Node.js process. If you run two backend instances (which
+        you will in production as you scale), single flight on instance A does
+        nothing about the thundering herd hitting instance B. The Redis lock
+        works across all instances because Redis is the shared source of truth.
+      </p>
+
+      <blockquote>
+        Built this while working on my
+        <a href="https://threads-eight-ruddy.vercel.app" target="_blank" rel="noopener">Threads clone</a>
+        <a href="https://github.com/Rohitsingh385/threads" target="_blank" rel="noopener">full source on GitHub</a>
+        if you want to see the complete implementation in context.
+      </blockquote>
+
+    </div>
+
+    <div class="tags-strip">
+      <p class="tags-label">Tags</p>
+      <div class="tags">
+        <a class="tag" href="../blog.html">#redis</a>
+        <a class="tag" href="../blog.html">#node</a>
+        <a class="tag" href="../blog.html">#typescript</a>
+        <a class="tag" href="../blog.html">#backend</a>
+        <a class="tag" href="../blog.html">#webdev</a>
+        <a class="tag" href="../blog.html">#javascript</a>
+        <a class="tag" href="../blog.html">#database</a>
+        <a class="tag" href="../blog.html">#performance</a>
+      </div>
+    </div>
+
+    <div class="article-footer">
+      <p>
+        I write about backend patterns I learn while shipping real products.
+        <a href="../index.html">More about me</a> ·
+        <a href="../blog.html">Read more posts</a>
+      </p>
+    </div>
+
+  </article>
+
+  <footer class="site">
+    <span class="footer-left">Rohit Kumar · Ranchi, India</span>
+    <div class="footer-right">
+      <a href="../blog.html">← All posts</a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+    });
+  }, { threshold: 0.05 });
+  document.querySelectorAll('.fade-in').forEach((el) => observer.observe(el));
+</script>
+</body>
+</html>
