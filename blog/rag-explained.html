@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG Explained Simply — How to Make an AI Read Your Documents Before It Answers</title>
+  <meta name="description" content="A beginner-friendly, picture-first explanation of Retrieval Augmented Generation (RAG): why LLMs need it, how it differs from fine-tuning, and how indexing, retrieval, augmentation and generation work.">
+  <meta name="keywords" content="rag, retrieval augmented generation, langchain, llm, embeddings, vector database, chroma, text splitter, document loader, retriever, mmr, ai, beginners">
+  <meta name="author" content="Rohit Kumar">
+  <link rel="canonical" href="https://rowhit.in/blog/rag-explained.html">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="RAG Explained Simply — How to Make an AI Read Your Documents Before It Answers">
+  <meta property="og:description" content="Why LLMs need RAG, how it compares to fine-tuning, and how it works step by step — with pictures.">
+  <meta property="og:url" content="https://rowhit.in/blog/rag-explained.html">
+  <meta property="og:site_name" content="Rohit Kumar">
+  <meta property="article:published_time" content="2026-10-17T10:00:00+05:30">
+  <meta property="article:author" content="Rohit Kumar">
+  <meta property="article:tag" content="rag">
+  <meta property="article:tag" content="llm">
+  <meta property="article:tag" content="langchain">
+  <meta property="article:tag" content="ai">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="RAG Explained Simply">
+  <meta name="twitter:description" content="Why LLMs need RAG and how it works step by step — with pictures.">
+  <meta name="twitter:creator" content="@rohiteeee">
+
+  <!-- Breadcrumb structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://rowhit.in/" },
+      { "@type": "ListItem", "position": 2, "name": "Writing", "item": "https://rowhit.in/blog.html" },
+      { "@type": "ListItem", "position": 3, "name": "RAG Explained Simply" }
+    ]
+  }
+  </script>
+
+  <!-- Article structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "RAG Explained Simply — How to Make an AI Read Your Documents Before It Answers",
+    "description": "A beginner-friendly, picture-first explanation of Retrieval Augmented Generation (RAG): why LLMs need it, how it differs from fine-tuning, and how indexing, retrieval, augmentation and generation work.",
+    "datePublished": "2026-10-17T10:00:00+05:30",
+    "dateModified": "2026-10-17T10:00:00+05:30",
+    "author": {
+      "@type": "Person",
+      "name": "Rohit Kumar",
+      "url": "https://rowhit.in",
+      "sameAs": [
+        "https://github.com/Rohitsingh385",
+        "https://www.linkedin.com/in/rohiteeee/",
+        "https://x.com/rohiteeee"
+      ]
+    },
+    "publisher": {
+      "@type": "Person",
+      "name": "Rohit Kumar",
+      "url": "https://rowhit.in"
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "https://rowhit.in/blog/rag-explained.html"
+    },
+    "keywords": "rag, retrieval augmented generation, langchain, llm, embeddings, vector database, retriever"
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f2ec; --surface: #edeae2; --text: #1c1b18; --muted: #6b6860;
+      --faint: #a09d97; --border: #dedad2; --accent: #c8612a; --accent-bg: #fdf1eb;
+      --code-bg: #1c1b18;
+    }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.6; }
+    a { color: inherit; text-decoration: none; }
+    a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+    .page { max-width: 720px; margin: 0 auto; padding: 0 28px; }
+
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 32px 0 0; margin-bottom: 56px; }
+    .nav-id { display: flex; align-items: center; gap: 10px; }
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .nav-name { font-size: 14px; font-weight: 500; }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a { font-size: 13px; color: var(--muted); transition: color 0.15s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); }
+
+    .back-link { font-size: 13px; color: var(--faint); margin-bottom: 32px; display: inline-block; transition: color 0.15s; }
+    .back-link:hover { color: var(--text); }
+
+    article header { margin-bottom: 40px; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
+    .article-label { font-size: 12px; color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 18px; }
+    .article-title { font-family: 'Instrument Serif', Georgia, serif; font-size: clamp(30px, 5.5vw, 44px); line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 18px; font-weight: 400; }
+    .article-title em { font-style: italic; color: var(--accent); }
+    .article-meta { font-size: 13px; color: var(--faint); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .article-meta time { color: var(--muted); }
+    .meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--faint); display: inline-block; }
+
+    .article-body { font-size: 16px; line-height: 1.75; color: var(--text); }
+    .article-body p { margin-bottom: 22px; }
+    .article-body p.lead { font-size: 17px; color: var(--muted); }
+    .article-body h2 { font-size: 23px; font-weight: 500; letter-spacing: -0.015em; margin: 52px 0 16px; color: var(--text); scroll-margin-top: 20px; }
+    .article-body h3 { font-size: 16px; font-weight: 600; margin: 28px 0 10px; color: var(--text); text-transform: uppercase; letter-spacing: 0.04em; }
+    .article-body h3.sub { font-size: 18px; font-weight: 500; text-transform: none; letter-spacing: -0.01em; margin: 38px 0 12px; }
+    .article-body ul, .article-body ol { margin: 0 0 22px; padding-left: 22px; }
+    .article-body li { font-size: 16px; line-height: 1.75; color: var(--muted); margin-bottom: 8px; }
+    .article-body li::marker { color: var(--faint); }
+    .article-body strong { color: var(--text); font-weight: 600; }
+    .article-body a { color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 1px; transition: border-color 0.15s; }
+    .article-body a:hover { border-color: var(--accent); }
+
+    .article-body code {
+      font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+      font-size: 0.86em;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+    .article-body pre {
+      font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+      background: var(--code-bg);
+      color: #e4e0d8;
+      border-radius: 8px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.65;
+      margin: 22px 0;
+      -webkit-overflow-scrolling: touch;
+    }
+    .article-body pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+    .article-body blockquote {
+      border-left: 2px solid var(--accent);
+      padding-left: 18px;
+      margin: 24px 0;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .pattern-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; }
+    .pattern-table th, .pattern-table td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .pattern-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); font-weight: 500; }
+    .pattern-table td { color: var(--muted); line-height: 1.55; }
+    .pattern-table td:first-child { color: var(--text); font-weight: 500; white-space: nowrap; }
+
+    /* ---------- Figures & diagrams ---------- */
+    figure.fig { margin: 28px 0 32px; }
+    .fig-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 20px; }
+    figcaption { font-size: 13px; color: var(--faint); margin-top: 10px; line-height: 1.55; }
+    .fig svg { display: block; width: 100%; height: auto; max-width: 480px; margin: 0 auto; }
+    .fig svg text { font-family: 'Inter', -apple-system, sans-serif; font-size: 14px; fill: var(--text); }
+    .fig svg .m { fill: var(--muted); font-size: 12.5px; }
+    .fig svg .a { fill: var(--accent); }
+    .fig svg .it { font-style: italic; }
+    .fig svg .box { fill: var(--bg); stroke: var(--border); stroke-width: 1.5; }
+    .fig svg .box-a { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.5; }
+    .fig svg .box-d { fill: var(--bg); stroke: var(--faint); stroke-width: 1.5; stroke-dasharray: 5 4; }
+    .fig svg .ln { stroke: var(--faint); stroke-width: 1.5; fill: none; }
+    .fig svg .ln-a { stroke: var(--accent); stroke-width: 1.5; fill: none; stroke-dasharray: 4 3; }
+    .fig svg .ov { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1; }
+    .fig svg .zone { fill: var(--bg); stroke: var(--border); stroke-width: 1; }
+
+    .flow-label { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
+    .flow-label span { font-weight: 400; color: var(--muted); }
+    .flow { display: flex; align-items: stretch; gap: 8px; }
+    .flow + .flow-link { margin: 14px 0 14px; }
+    .node { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 11px 8px; text-align: center; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+    .node b { display: block; font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .node.hl { border-color: var(--accent); background: var(--accent-bg); }
+    .arr { align-self: center; color: var(--faint); font-size: 16px; flex: 0 0 auto; }
+    .flow-link { font-size: 12.5px; color: var(--muted); text-align: center; line-height: 1.5; }
+    .flow-link .arr { display: inline; }
+
+    .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 26px 0 28px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 16px 18px; }
+    .card h4 { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+    .card p { font-size: 14px; line-height: 1.55; color: var(--muted); margin: 0 0 10px; }
+    .card p.ex { margin: 0; font-size: 13px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; line-height: 1.5; }
+
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 22px 0 28px; }
+    .two .card h4 { margin-bottom: 10px; }
+    .two ul { list-style: none; padding: 0; margin: 0; }
+    .two li { font-size: 13px; line-height: 1.45; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; }
+    .two li:last-child { margin-bottom: 0; }
+
+    .callout { background: var(--accent-bg); border: 1px solid var(--accent); border-radius: 10px; padding: 18px 20px; margin: 26px 0 30px; }
+    .article-body .callout p { margin: 0; font-size: 17px; line-height: 1.6; color: var(--text); }
+
+    .tags-strip { margin-top: 48px; padding-top: 28px; border-top: 1px solid var(--border); }
+    .tags-label { font-size: 11px; color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag { font-size: 12px; color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px; transition: color 0.15s, border-color 0.15s; }
+    .tag:hover { color: var(--accent); border-color: var(--accent); }
+
+    .article-footer { margin-top: 48px; padding: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+    .article-footer p { font-size: 14px; color: var(--muted); margin: 0; }
+    .article-footer a { color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 1px; }
+    .article-footer a:hover { border-color: var(--accent); }
+
+    footer.site { border-top: 1px solid var(--border); padding: 32px 0 56px; margin-top: 56px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .footer-left { font-size: 13px; color: var(--faint); }
+    .footer-right { display: flex; gap: 20px; }
+    .footer-right a { font-size: 13px; color: var(--muted); transition: color 0.15s; }
+    .footer-right a:hover { color: var(--text); }
+
+    @media (max-width: 640px) {
+      .three, .two { grid-template-columns: 1fr; }
+      .flow { flex-direction: column; }
+      .flow .arr { transform: rotate(90deg); }
+    }
+    @media (max-width: 580px) {
+      .page { padding: 0 20px; }
+      .nav { margin-bottom: 40px; }
+      .nav-links { gap: 14px; }
+      .article-body { font-size: 15.5px; }
+      .article-body pre { font-size: 12px; padding: 14px 16px; }
+      .pattern-table { font-size: 13px; }
+      .pattern-table th, .pattern-table td { padding: 10px 8px; }
+      .pattern-table td:first-child { white-space: normal; }
+      .fig-box { padding: 16px 12px; }
+      .fig svg text { font-size: 16px; }
+      .fig svg .m { font-size: 13px; }
+      footer.site { flex-direction: column; align-items: flex-start; gap: 12px; }
+    }
+
+    .fade-in { opacity: 0; transform: translateY(16px); transition: opacity 0.5s ease, transform 0.5s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .fade-in { opacity: 1; transform: none; transition: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-id">
+      <div class="nav-dot"></div>
+      <span class="nav-name">Rohit Kumar</span>
+    </a>
+    <div class="nav-links">
+      <a href="../blog.html" class="active">Writing</a>
+      <a href="https://github.com/Rohitsingh385" target="_blank" rel="noopener">GitHub ↗</a>
+      <a href="https://www.linkedin.com/in/rohiteeee/" target="_blank" rel="noopener">LinkedIn ↗</a>
+      <a href="https://x.com/rohiteeee" target="_blank" rel="noopener">X ↗</a>
+    </div>
+  </nav>
+
+  <a href="../blog.html" class="back-link">← All posts</a>
+
+  <article class="fade-in">
+
+    <header>
+      <p class="article-label">AI · Fundamentals</p>
+      <h1 class="article-title">RAG explained simply: how to make an AI <em>read your documents</em> before it answers</h1>
+      <div class="article-meta">
+        <span class="meta-dot"></span>
+        <span>10 min read</span>
+        <span class="meta-dot"></span>
+        <span>By Rohit Kumar</span>
+      </div>
+    </header>
+
+    <div class="article-body">
+
+      <p class="lead">
+        Ask a chatbot about your company’s leave policy and one of two things happens.
+        It says it doesn’t know, or it confidently makes something up.
+        RAG is the fix for both, and it’s much simpler than its name suggests.
+      </p>
+
+      <p>
+        This post is for someone meeting RAG for the first time. No maths and no
+        AI background needed. Every idea gets a picture and a plain explanation,
+        and we put the pieces together at the end.
+      </p>
+
+      <div class="callout">
+        <p><strong>RAG in one sentence:</strong> before the AI answers, look up the
+        most relevant pieces of your own data and paste them into the question.</p>
+      </div>
+
+      <h2>The problem: an AI taking a closed-book exam</h2>
+
+      <p>
+        A large language model (LLM) like GPT learned from a huge pile of text during
+        training. Whatever it learned is stored inside the model itself, a bit like
+        a student who memorised their notes before an exam. Ask about something
+        outside those notes and three things can go wrong:
+      </p>
+
+      <div class="three">
+        <div class="card">
+          <h4>It has never seen your data</h4>
+          <p>Your company files, your emails and your course material were never part of its training.</p>
+          <p class="ex">“What’s our refund policy?” → no idea.</p>
+        </div>
+        <div class="card">
+          <h4>It’s stuck in the past</h4>
+          <p>Training stops at a certain date (the knowledge cutoff). Anything newer is invisible to it.</p>
+          <p class="ex">“What happened in the news today?” → it can’t know.</p>
+        </div>
+        <div class="card">
+          <h4>It can make things up</h4>
+          <p>An LLM predicts likely words, so it can sound sure even when it is wrong. This is called hallucination.</p>
+          <p class="ex">A fake but confident-sounding answer.</p>
+        </div>
+      </div>
+
+      <h2>Why not just retrain the model?</h2>
+
+      <p>
+        The obvious idea is <strong>fine-tuning</strong>: keep training the model on
+        your own data until it knows it. It works, but it has two big drawbacks:
+      </p>
+
+      <ul>
+        <li><strong>It’s expensive.</strong> Training a large model needs serious computing power and money.</li>
+        <li><strong>It doesn’t stay up to date.</strong> Add a new course or publish a new article and you have to train again.</li>
+      </ul>
+
+      <p>
+        There’s a smarter door into the model. Researchers noticed that big models
+        can learn a task from examples written <em>inside the prompt itself</em>,
+        with no retraining at all. That is called few-shot prompting. RAG uses the
+        same door, but instead of sending examples it sends <strong>facts</strong>.
+      </p>
+
+      <h2>The idea: turn it into an open-book exam</h2>
+
+      <p>
+        With RAG, the AI gets to look at the relevant pages before it answers.
+        We don’t change the model. We change what we hand it.
+      </p>
+
+      <figure class="fig">
+        <div class="fig-box">
+          <svg viewBox="0 0 480 250" role="img" aria-labelledby="t-open">
+            <title id="t-open">Closed-book: question goes to the LLM and the answer may be a guess. Open-book: question plus your notes go to the LLM and the answer comes from the notes.</title>
+            <defs>
+              <marker id="ah1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#a09d97"/>
+              </marker>
+            </defs>
+
+            <text class="m" x="0" y="14">Plain LLM (closed book)</text>
+            <rect class="box" x="0" y="26" width="110" height="44" rx="8"/>
+            <text x="55" y="53" text-anchor="middle">Question</text>
+            <rect class="box" x="185" y="26" width="110" height="44" rx="8"/>
+            <text x="240" y="53" text-anchor="middle">LLM</text>
+            <rect class="box-d" x="370" y="26" width="110" height="44" rx="8"/>
+            <text x="425" y="46" text-anchor="middle">Answer</text>
+            <text class="m" x="425" y="62" text-anchor="middle">maybe a guess</text>
+            <path class="ln" d="M112 48 L181 48" marker-end="url(#ah1)"/>
+            <path class="ln" d="M297 48 L366 48" marker-end="url(#ah1)"/>
+
+            <text class="m" x="0" y="124">RAG (open book)</text>
+            <rect class="box" x="0" y="136" width="110" height="40" rx="8"/>
+            <text x="55" y="161" text-anchor="middle">Question</text>
+            <rect class="box-a" x="0" y="190" width="110" height="40" rx="8"/>
+            <text x="55" y="215" text-anchor="middle">Your notes</text>
+            <rect class="box" x="185" y="161" width="110" height="44" rx="8"/>
+            <text x="240" y="188" text-anchor="middle">LLM</text>
+            <rect class="box-a" x="370" y="161" width="110" height="44" rx="8"/>
+            <text x="425" y="181" text-anchor="middle">Answer</text>
+            <text class="m" x="425" y="197" text-anchor="middle">from your notes</text>
+            <path class="ln" d="M112 160 L181 178" marker-end="url(#ah1)"/>
+            <path class="ln" d="M112 208 L181 190" marker-end="url(#ah1)"/>
+            <path class="ln" d="M297 183 L366 183" marker-end="url(#ah1)"/>
+          </svg>
+        </div>
+        <figcaption>Same model, different input. In RAG the “notes” are the pieces of your own data that are relevant to this one question.</figcaption>
+      </figure>
+
+      <p>The name is just three jobs in a row:</p>
+
+      <ul>
+        <li><strong>Retrieval:</strong> find the pieces of your data that matter for the question.</li>
+        <li><strong>Augmented:</strong> add those pieces to the prompt.</li>
+        <li><strong>Generation:</strong> let the LLM write the answer using them.</li>
+      </ul>
+
+      <p>
+        Because the answer comes from text you supplied, it is far less likely to be
+        invented. It can also use private or brand-new information, since you can
+        swap the data any time without touching the model.
+      </p>
+
+      <h2>One idea you need first: embeddings</h2>
+
+      <p>
+        There’s one question left: how does the system <em>find</em> the relevant
+        pieces? Searching for matching keywords isn’t enough. “How much do I get
+        paid?” shares no words with a document that says “salary”, yet they mean
+        the same thing.
+      </p>
+
+      <p>
+        The trick is to turn text into a list of numbers called an
+        <strong>embedding</strong>. Texts with similar meaning get similar numbers.
+        The easiest way to picture it is a map where meaning decides the location:
+      </p>
+
+      <figure class="fig">
+        <div class="fig-box">
+          <svg viewBox="0 0 480 300" role="img" aria-labelledby="t-map">
+            <title id="t-map">A map of words grouped by meaning: animals, money and work, and travel. The question about getting paid lands inside the money group, next to the word salary.</title>
+
+            <ellipse class="zone" cx="110" cy="85" rx="90" ry="52"/>
+            <text class="m it" x="110" y="26" text-anchor="middle">animals</text>
+            <circle cx="68" cy="72" r="5" fill="#a09d97"/><text x="78" y="77">kitten</text>
+            <circle cx="140" cy="62" r="5" fill="#a09d97"/><text x="150" y="67">puppy</text>
+            <circle cx="95" cy="108" r="5" fill="#a09d97"/><text x="105" y="113">dog</text>
+
+            <ellipse class="zone" cx="375" cy="95" rx="92" ry="58"/>
+            <text class="m it" x="375" y="30" text-anchor="middle">money and work</text>
+            <circle cx="345" cy="78" r="5" fill="#a09d97"/><text x="355" y="83">salary</text>
+            <circle cx="405" cy="58" r="5" fill="#a09d97"/><text x="415" y="63">tax</text>
+            <circle cx="400" cy="110" r="5" fill="#a09d97"/><text x="410" y="115">invoice</text>
+
+            <ellipse class="zone" cx="240" cy="245" rx="100" ry="44"/>
+            <text class="m it" x="240" y="192" text-anchor="middle">travel</text>
+            <circle cx="198" cy="238" r="5" fill="#a09d97"/><text x="208" y="243">flight</text>
+            <circle cx="262" cy="258" r="5" fill="#a09d97"/><text x="272" y="263">hotel</text>
+
+            <circle cx="338" cy="124" r="7" fill="#c8612a"/>
+            <path class="ln-a" d="M338 117 L345 83"/>
+            <text class="a" x="322" y="150" text-anchor="end" style="font-weight:600">“How much do I get paid?”</text>
+          </svg>
+        </div>
+        <figcaption>The real map has hundreds of dimensions, not two, but the idea is identical: closeness means similar meaning. Your question becomes a point on the map, and the nearest points are your answers.</figcaption>
+      </figure>
+
+      <p>
+        Finding the closest points is called <strong>similarity search</strong>
+        (usually measured with cosine similarity). It finds text that is
+        <em>conceptually</em> close even when no words match.
+      </p>
+
+      <h2>The big picture: two phases</h2>
+
+      <p>
+        Every RAG system does its work in two phases. The first runs once, ahead of
+        time. The second runs every time someone asks a question.
+      </p>
+
+      <figure class="fig">
+        <div class="fig-box">
+          <p class="flow-label">Phase 1: Indexing <span>(once, ahead of time)</span></p>
+          <div class="flow">
+            <div class="node"><b>Load</b>read your files</div>
+            <span class="arr">→</span>
+            <div class="node"><b>Split</b>cut into chunks</div>
+            <span class="arr">→</span>
+            <div class="node"><b>Embed</b>text to numbers</div>
+            <span class="arr">→</span>
+            <div class="node hl"><b>Store</b>vector database</div>
+          </div>
+
+          <p class="flow-link">↓ the answering phase searches what was stored above ↓</p>
+
+          <p class="flow-label">Phase 2: Answering <span>(every question)</span></p>
+          <div class="flow">
+            <div class="node"><b>Question</b>from the user</div>
+            <span class="arr">→</span>
+            <div class="node hl"><b>Retrieve</b>find best chunks</div>
+            <span class="arr">→</span>
+            <div class="node"><b>Augment</b>add to prompt</div>
+            <span class="arr">→</span>
+            <div class="node"><b>Generate</b>LLM writes answer</div>
+          </div>
+        </div>
+        <figcaption>Think of a library. Phase 1 is organising the shelves. Phase 2 is a librarian fetching the right pages when you ask.</figcaption>
+      </figure>
+
+      <h2>Phase 1: Indexing, preparing the library</h2>
+
+      <h3 class="sub">Step 1: Load your documents</h3>
+
+      <p>
+        Your data lives in PDFs, text files, web pages and spreadsheets. A
+        <strong>document loader</strong> reads each source and converts it into the
+        same standard shape, so everything after this step doesn’t care where the
+        data came from. In LangChain that shape is a <code>Document</code> with two parts:
+      </p>
+
+      <ul>
+        <li><code>page_content</code>: the actual text.</li>
+        <li><code>metadata</code>: extra details such as the file name, page number or author.</li>
+      </ul>
+
+      <p>There’s a loader for most common sources:</p>
+
+      <table class="pattern-table">
+        <thead>
+          <tr><th>Loader</th><th>What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>TextLoader</td><td>Reads plain text files such as logs, transcripts and notes.</td></tr>
+          <tr><td>PyPDFLoader</td><td>Reads a PDF page by page, one <code>Document</code> per page. Best for text-heavy PDFs and weaker on scanned images or complex layouts.</td></tr>
+          <tr><td>DirectoryLoader</td><td>Loads many files from a folder. You can filter by file type with a pattern like <code>*.pdf</code>.</td></tr>
+          <tr><td>WebBaseLoader</td><td>Pulls text from web pages. Good for static sites, but pages that depend heavily on JavaScript need other tools.</td></tr>
+          <tr><td>CSVLoader</td><td>Treats every row of a CSV file as its own <code>Document</code>.</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        Two more things worth knowing. <code>.load()</code> reads everything into
+        memory at once, which is fine for small data. <code>.lazy_load()</code>
+        hands you one document at a time, which is far safer for large data. And if
+        no loader fits your source, you can write your own by extending
+        <code>BaseLoader</code>.
+      </p>
+
+      <h3 class="sub">Step 2: Split into chunks</h3>
+
+      <p>
+        Why not feed the whole document to the model? Two reasons. Models can only
+        read a limited amount of text at once, and a small, focused chunk is much
+        easier to match to a question than a 200-page PDF. So we cut documents into
+        smaller pieces.
+      </p>
+
+      <p>
+        There are two common ways to cut. <strong>Length-based splitting</strong>
+        chops every N characters or tokens. It’s fast and simple, but it can slice
+        through the middle of a word or sentence and hurt search quality.
+        <strong>Structure-based splitting</strong>, with the Recursive Character Text
+        Splitter, is the usual choice. It tries the biggest natural break first
+        (paragraphs), then lines, then words, and only goes smaller when a piece is
+        still too long. Chunks end up as complete thoughts.
+      </p>
+
+      <p>
+        Either way you can set a <strong>chunk overlap</strong>: a small amount of text
+        repeated at the edge of neighbouring chunks, so an idea that straddles a cut
+        isn’t lost.
+      </p>
+
+      <figure class="fig">
+        <div class="fig-box">
+          <svg viewBox="0 0 480 170" role="img" aria-labelledby="t-chunk">
+            <title id="t-chunk">One long document is cut into three chunks. The end of each chunk repeats at the start of the next, shown as the overlap.</title>
+            <text class="m" x="0" y="14">One long document</text>
+            <rect class="box" x="0" y="22" width="480" height="22" rx="4"/>
+            <line class="ln" x1="10" y1="33" x2="470" y2="33" stroke-dasharray="2 5"/>
+
+            <rect class="box" x="0" y="62" width="200" height="26" rx="4"/>
+            <rect class="ov" x="160" y="62" width="40" height="26"/>
+            <text x="10" y="80">Chunk 1</text>
+
+            <rect class="box" x="160" y="96" width="200" height="26" rx="4"/>
+            <rect class="ov" x="160" y="96" width="40" height="26"/>
+            <rect class="ov" x="320" y="96" width="40" height="26"/>
+            <text x="210" y="114">Chunk 2</text>
+
+            <rect class="box" x="320" y="130" width="160" height="26" rx="4"/>
+            <rect class="ov" x="320" y="130" width="40" height="26"/>
+            <text x="370" y="148">Chunk 3</text>
+
+            <text class="a" x="208" y="80" style="font-size:12.5px">overlap</text>
+            <text class="a" x="368" y="114" style="font-size:12.5px">overlap</text>
+          </svg>
+        </div>
+        <figcaption>The shaded parts appear in two chunks. If a sentence is split at a boundary, at least one chunk still contains it whole.</figcaption>
+      </figure>
+
+      <h3 class="sub">Step 3: Turn chunks into embeddings</h3>
+
+      <p>
+        Each chunk now goes through an embedding model, the same “text to
+        meaning-numbers” step from the map earlier. Each chunk comes out as one
+        vector that captures what it is about.
+      </p>
+
+      <h3 class="sub">Step 4: Save them in a vector store</h3>
+
+      <p>
+        Those vectors need a home. Regular SQL databases aren’t built to search
+        through thousands of long number lists by closeness, and comparing your
+        question against every single vector would be slow. A <strong>vector store</strong>
+        is built for exactly this. It keeps the vectors with their metadata (file name, page and so on),
+        finds the nearest ones quickly using smart indexing, and still lets you add, read,
+        update and delete records.
+      </p>
+
+      <p>
+        You’ll hear both “vector store” and “vector database”. A vector store is the
+        lighter idea, focused on storing vectors and searching them (FAISS is an
+        example). A vector database adds the heavy-duty extras such as running across
+        many machines, saving data permanently and access control (Pinecone and Milvus are examples).
+        Every vector database is a vector store, but not the other way round.
+      </p>
+
+      <p>
+        For learning and local projects, <strong>Chroma</strong> is a popular choice:
+        lightweight, open source and easy to run on your own machine. LangChain wraps
+        all of these behind the same methods, such as <code>add_documents</code> and
+        <code>similarity_search</code>, so you can switch providers later without
+        rewriting your app.
+      </p>
+
+      <p>That completes Phase 1. The library is organised, and it only needs redoing when your data changes.</p>
+
+      <h2>Phase 2: Answering a question</h2>
+
+      <h3 class="sub">Step 1: Retrieve</h3>
+
+      <p>
+        A <strong>retriever</strong> is the librarian. It takes the user’s question and
+        returns the most relevant documents from your data source. In LangChain it
+        works as a building block that plugs straight into a chain.
+        The simplest version converts the question into an embedding, then asks the vector store for the closest chunks.
+        There are also retrievers for other sources, like Wikipedia or arXiv.
+      </p>
+
+      <p>
+        On top of that, you can pick a smarter <em>search strategy</em>:
+      </p>
+
+      <table class="pattern-table">
+        <thead>
+          <tr><th>Strategy</th><th>The idea</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Similarity search</td><td>Return the chunks closest to the question. Simple and the default.</td></tr>
+          <tr><td>MMR</td><td>Maximum Marginal Relevance. Balance relevance with variety so you don’t get five copies of the same fact.</td></tr>
+          <tr><td>Multi-query</td><td>An LLM rewrites a vague question several ways, runs them all and merges the results without duplicates.</td></tr>
+          <tr><td>Contextual compression</td><td>Fetch documents first, then trim each one down to only the lines that matter for this question.</td></tr>
+        </tbody>
+      </table>
+
+      <p>MMR is easiest to see side by side:</p>
+
+      <div class="two">
+        <div class="card">
+          <h4>Plain similarity</h4>
+          <ul>
+            <li>“Refunds take 5 days.”</li>
+            <li>“Your refund is processed in 5 days.”</li>
+            <li>“Expect the refund within 5 days.”</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>MMR</h4>
+          <ul>
+            <li>“Refunds take 5 days.”</li>
+            <li>“You need your order ID to request one.”</li>
+            <li>“Gift cards can’t be refunded.”</li>
+          </ul>
+        </div>
+      </div>
+
+      <p>
+        All three on the left are relevant, but they say one thing. MMR picks the best
+        match first, then prefers chunks that are relevant but <em>different</em> from what it already has,
+        so the model sees more of the picture.
+      </p>
+
+      <h3 class="sub">Step 2: Augment</h3>
+
+      <p>
+        Now we build the prompt. This step is just text assembly: the retrieved chunks
+        and the user’s question are placed in one template.
+      </p>
+
+      <pre><code>Answer the question using only the context below.
+If the answer is not in the context, say "I don't know".
+
+Context:
+{the retrieved chunks go here}
+
+Question:
+{the user's question goes here}</code></pre>
+
+      <p>
+        That “say I don’t know” line matters. It gives the model permission to admit
+        gaps instead of guessing, which is how RAG cuts down on hallucination.
+      </p>
+
+      <h3 class="sub">Step 3: Generate</h3>
+
+      <p>
+        The LLM reads the filled-in prompt and writes an answer grounded in the
+        context you handed it. The model only ever sees the few chunks that were
+        retrieved, not your whole library.
+      </p>
+
+      <h2>Putting it all together</h2>
+
+      <table class="pattern-table">
+        <thead>
+          <tr><th>Stage</th><th>What happens</th><th>Library analogy</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Load</td><td>Read files into <code>Document</code> objects</td><td>Collecting the books</td></tr>
+          <tr><td>Split</td><td>Cut into small chunks with overlap</td><td>Splitting books into pages</td></tr>
+          <tr><td>Embed + store</td><td>Chunks become vectors saved in a vector store</td><td>Shelving pages by topic</td></tr>
+          <tr><td>Retrieve</td><td>Find the chunks closest to the question</td><td>Librarian fetches pages</td></tr>
+          <tr><td>Augment</td><td>Put chunks + question in one prompt</td><td>Handing over the pages with the question</td></tr>
+          <tr><td>Generate</td><td>LLM answers from that context</td><td>Student writes with the book open</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        A last word on RAG versus fine-tuning, since the two get mixed up. Fine-tuning
+        changes the model itself, which is useful when you want it to behave or write
+        in a certain way. RAG leaves the model alone and gives it the right facts at
+        question time, which is why it suits data that is private or changes often.
+        Many real products use both.
+      </p>
+
+      <p>
+        If you remember one thing, make it this: <strong>RAG doesn’t make the model smarter.
+        It makes sure the model has the right pages open when it answers.</strong>
+      </p>
+
+      <blockquote>
+        I’m still learning this myself and writing it down helps me. If something
+        here is unclear or wrong, tell me on
+        <a href="https://x.com/rohiteeee" target="_blank" rel="noopener">X</a> and I’ll fix it.
+      </blockquote>
+
+    </div>
+
+    <div class="tags-strip">
+      <p class="tags-label">Tags</p>
+      <div class="tags">
+        <a class="tag" href="../blog.html">#rag</a>
+        <a class="tag" href="../blog.html">#llm</a>
+        <a class="tag" href="../blog.html">#ai</a>
+        <a class="tag" href="../blog.html">#langchain</a>
+        <a class="tag" href="../blog.html">#embeddings</a>
+        <a class="tag" href="../blog.html">#vectordb</a>
+        <a class="tag" href="../blog.html">#beginners</a>
+      </div>
+    </div>
+
+    <div class="article-footer">
+      <p>
+        I write about things I’m learning while building real products.
+        <a href="../index.html">More about me</a> ·
+        <a href="../blog.html">Read more posts</a>
+      </p>
+    </div>
+
+  </article>
+
+  <footer class="site">
+    <span class="footer-left">Rohit Kumar · Ranchi, India</span>
+    <div class="footer-right">
+      <a href="../blog.html">← All posts</a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+    });
+  }, { threshold: 0.05 });
+  document.querySelectorAll('.fade-in').forEach((el) => observer.observe(el));
+</script>
+</body>
+</html>
